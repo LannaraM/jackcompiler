@@ -16,6 +16,8 @@ public class Parser {
     private Token peekToken;
     private StringBuilder xmlOutput = new StringBuilder();
     private VMWriter vmWriter = new VMWriter();
+    private int ifLabelNum = 0 ;
+    private int whileLabelNum = 0;
 
     public Parser(byte[] input) {
         scan = new Scanner(input);
@@ -269,13 +271,40 @@ public class Parser {
 
         void parseIf() {
             printNonTerminal("ifStatement");
+    
+            var labelTrue = "IF_TRUE" + ifLabelNum;
+            var labelFalse = "IF_FALSE" + ifLabelNum;
+            var labelEnd = "IF_END" + ifLabelNum;
+    
+            ifLabelNum++;
+    
             expectPeek(IF);
             expectPeek(LPAREN);
             parseExpression();
             expectPeek(RPAREN);
+    
+            vmWriter.writeIf(labelTrue);
+            vmWriter.writeGoto(labelFalse);
+            vmWriter.writeLabel(labelTrue);
+    
             expectPeek(LBRACE);
             parseStatements();
             expectPeek(RBRACE);
+            if (peekTokenIs(ELSE)){
+                vmWriter.writeGoto(labelEnd);
+            }
+    
+            vmWriter.writeLabel(labelFalse);
+    
+            if (peekTokenIs(ELSE))
+            {
+                expectPeek(ELSE);
+                expectPeek(LBRACE);
+                parseStatements();
+                expectPeek(RBRACE);
+                vmWriter.writeLabel(labelEnd);
+            }
+    
             printNonTerminal("/ifStatement");
         }
 
@@ -315,18 +344,33 @@ public class Parser {
             }
         }
     
-            // 'while' '(' expression ')' '{' statements '}'
-    void parseWhile() {
-        printNonTerminal("whileStatement");
-        expectPeek(WHILE);
-        expectPeek(LPAREN);
-        parseExpression();
-        expectPeek(RPAREN);
-        expectPeek(LBRACE);
-        parseStatements();
-        expectPeek(RBRACE);
-        printNonTerminal("/whileStatement");
-    }
+        // 'while' '(' expression ')' '{' statements '}'
+        void parseWhile() {
+            printNonTerminal("whileStatement");
+        
+            var labelTrue = "WHILE_EXP" + whileLabelNum;
+            var labelFalse = "WHILE_END" + whileLabelNum;
+            whileLabelNum++;
+        
+            vmWriter.writeLabel(labelTrue);
+        
+            expectPeek(WHILE);
+            expectPeek(LPAREN);
+            parseExpression();
+        
+            vmWriter.writeArithmetic(Command.NOT);
+            vmWriter.writeIf(labelFalse);
+        
+            expectPeek(RPAREN);
+            expectPeek(LBRACE);
+            parseStatements();
+    
+            vmWriter.writeGoto(labelTrue); // Go back to labelTrue and check condition
+            vmWriter.writeLabel(labelFalse); // Breaks out of while loop because ~(condition) is true
+        
+            expectPeek(RBRACE);
+            printNonTerminal("/whileStatement");
+        }
 
         // ReturnStatement -> 'return' expression? ';'
         void parseReturn() {
@@ -346,6 +390,8 @@ public class Parser {
 
         void parseSubroutineDec() {
             printNonTerminal("subroutineDec");
+            ifLabelNum = 0;
+            whileLabelNum = 0;
             expectPeek(CONSTRUCTOR, FUNCTION, METHOD);
             // 'int' | 'char' | 'boolean' | className
             expectPeek(VOID, INT, CHAR, BOOLEAN, IDENT);
