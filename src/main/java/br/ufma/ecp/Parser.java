@@ -3,6 +3,7 @@ package br.ufma.ecp;
 import br.ufma.ecp.token.Token;
 import br.ufma.ecp.token.TokenType;
 import static br.ufma.ecp.token.TokenType.*;
+import br.ufma.ecp.VMWriter.Segment;
 
 public class Parser {
 
@@ -13,6 +14,7 @@ public class Parser {
     private Token currentToken;
     private Token peekToken;
     private StringBuilder xmlOutput = new StringBuilder();
+    private VMWriter vmWriter = new VMWriter();
 
     public Parser(byte[] input) {
         scan = new Scanner(input);
@@ -26,6 +28,9 @@ public class Parser {
 
     public void parse() {
         parseClass();
+    }
+    public String VMOutput() {
+        return vmWriter.vmOutput();
     }
 
     void parseClass() {
@@ -108,6 +113,7 @@ public class Parser {
         switch (peekToken.type) {
             case NUMBER:
                 expectPeek(NUMBER);
+                vmWriter.writePush(Segment.CONST, Integer.parseInt(currentToken.lexeme));
                 break;
             case STRING:
                 expectPeek(STRING);
