@@ -118,12 +118,25 @@ public class Parser {
                 break;
             case STRING:
                 expectPeek(STRING);
+                var strValue = currentToken.lexeme;
+                vmWriter.writePush(Segment.CONST, strValue.length());
+                vmWriter.writeCall("String.new", 1);
+                for (int i = 0; i < strValue.length(); i++) {
+                    vmWriter.writePush(Segment.CONST, strValue.charAt(i));
+                    vmWriter.writeCall("String.appendChar", 2);
+                }
                 break;
             case FALSE:
             case NULL:
             case TRUE:
+                expectPeek(FALSE, NULL, TRUE);
+                vmWriter.writePush(Segment.CONST, 0);
+                if (currentToken.type == TRUE)
+                    vmWriter.writeArithmetic(Command.NOT);
+                break;
             case THIS:
-                expectPeek(FALSE, NULL, TRUE, THIS);
+                expectPeek(THIS);
+                vmWriter.writePush(Segment.POINTER, 0);
                 break;
             case IDENT:
                 expectPeek(IDENT);
