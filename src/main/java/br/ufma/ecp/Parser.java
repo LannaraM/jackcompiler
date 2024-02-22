@@ -158,7 +158,12 @@ public class Parser {
             case MINUS:
             case NOT:
                 expectPeek(MINUS, NOT);
+                var op = currentToken.type;
                 parseTerm();
+                if (op == MINUS)
+                    vmWriter.writeArithmetic(Command.NEG);
+                else
+                    vmWriter.writeArithmetic(Command.NOT);
                 break;
             default:
                 ;
@@ -329,8 +334,11 @@ public class Parser {
             expectPeek(RETURN);
             if (!peekTokenIs(SEMICOLON)) {
                 parseExpression();
+            }else{
+                vmWriter.writePush(Segment.CONST, 0);
             }
             expectPeek(SEMICOLON);
+            vmWriter.writeReturn();
     
             printNonTerminal("/returnStatement");
         }
